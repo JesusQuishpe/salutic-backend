@@ -19,7 +19,7 @@ class CreateOdoTeethDetailsTable extends Migration
             $table->foreign('odo_id')->references('id')->on('odo_odontogram');
             $table->unsignedBigInteger('tooth_id');
             $table->foreign('tooth_id')->references('id')->on('odo_teeth');
-            $table->unsignedBigInteger('symb_id')->nullable();
+            $table->unsignedBigInteger('symbo_id')->nullable();
             $table->foreign('symbo_id')->references('id')->on('odo_symbologies');
             $table->string('left_side',50)->nullable();
             $table->string('top_side',50)->nullable();
