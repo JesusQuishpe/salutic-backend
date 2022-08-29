@@ -17,7 +17,7 @@ class SystemModule extends Model
 
   public function submodules()
   {
-    return $this->hasMany(SystemModule::class, 'parent_id', 'id')->where('enable', '=', true);
+    return $this->hasMany(SystemModule::class, 'parent_id', 'id');
   }
 
   public function parent()

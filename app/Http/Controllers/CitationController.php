@@ -2,18 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\LbOrder;
-use App\Models\LbOrderTest;
-use App\Models\MedAllergie;
-use App\Models\MedFamilyHistory;
 use App\Models\MedicalAppointment;
-use App\Models\MedicalRecord;
-use App\Models\MedInterrogation;
-use App\Models\MedLifestyle;
-use App\Models\MedPhysicalExploration;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+
+use function PHPUnit\Framework\isNull;
 
 class CitationController extends Controller
 {
@@ -25,8 +17,26 @@ class CitationController extends Controller
   public function index(Request $request)
   {
     $model = new MedicalAppointment();
-    if ($request->has('identification')) {
 
+   /*return response()->json([
+    $request->query('start_date'),
+    $request->query('end_date'),
+    $request->query('state_filter'),
+    $request->query('identification'),
+   ]);*/
+    if (
+      $request->has('start_date')
+      && $request->has('end_date')
+      && $request->has('state_filter')
+      && $request->has('identification')
+    ) {
+      $results = $model->getCitationsByFilters($request->start_date, 
+      $request->end_date, 
+      $request->input('state_filter',null), 
+      $request->identification);
+      return $this->toPagination($results);
+    }
+    if ($request->has('identification')) {
       return $this->toPagination($model->getCitationsByIdentification($request->identification));
     }
     return $this->toPagination($model->getCitationsWithFullname());

@@ -14,7 +14,7 @@ class RolController extends Controller
    */
   public function index()
   {
-    $roles = Rol::all();
+    $roles = Rol::with('permissions')->get();
     return response()->json($roles);
   }
 

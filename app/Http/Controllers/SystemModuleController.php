@@ -14,7 +14,13 @@ class SystemModuleController extends Controller
    */
   public function index(Request $request)
   {
-    return response()->json(SystemModule::where('parent_id', null)->get());
+
+    if($request->has('submodules') && $request->has('module_id')){
+      $module=SystemModule::findOrFail($request->module_id);
+      return response()->json($module->submodules);
+    }
+
+    return response()->json(SystemModule::with('submodules.parent')->where('parent_id', null)->get());
   }
 
   /**

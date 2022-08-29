@@ -46,6 +46,7 @@ class NursingArea extends Model
       ->where('medical_appointments.area', '!=', 'Laboratorio')
       ->where('medical_appointments.attended', '=', false)
       ->where('medical_appointments.nur_attended', '=', false)
+      ->where('medical_appointments.nur_cancelled', '=', false)
       ->orderBy('medical_appointments.hour', 'asc')
       ->get();
   }

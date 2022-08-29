@@ -16,7 +16,7 @@ class LbAreaController extends Controller
   public function index(Request $request)
   {
     if ($request->has('groups') && $request->has('tests')) {
-      $areas = LbArea::with('groups:id,name,price,area_id', 'groups.tests:id,code,name,price,group_id')->get();
+      $areas = LbArea::with('groups:id,code,name,price,area_id', 'groups.tests:id,code,name,price,group_id')->get();
       return response()->json($areas);
     }
 

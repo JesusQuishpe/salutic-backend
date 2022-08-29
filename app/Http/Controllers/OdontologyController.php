@@ -525,4 +525,12 @@ class OdontologyController extends Controller
   {
     //
   }
+
+  public function removeOfQueue($appoId)
+  {
+    $appo=MedicalAppointment::findOrFail($appoId);
+    $appo->odo_cancelled=true;
+    $appo->save();
+    return response()->json([],204);
+  }
 }

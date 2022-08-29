@@ -26,6 +26,8 @@ class OdoPatientRecord extends Model
       //->where('nursing_area.attended', '=', true)
       ->where('medical_appointments.attended', '=', false)
       ->where('medical_appointments.nur_attended', '=', true)
+      //->where('medical_appointments.nur_cancelled', '=', false)
+      ->where('medical_appointments.odo_cancelled', '=', false)
       ->where('medical_appointments.area', '=', 'Odontologia')
       ->where('medical_appointments.date', '=', Carbon::now()->format('Y-m-d'))
       ->orderBy('medical_appointments.hour', 'asc')

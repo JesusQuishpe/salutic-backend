@@ -36,9 +36,21 @@ class MedExpedient extends Model
   {
     return $this->hasOne(MedInterrogation::class, 'record_id', 'id');
   }
-  public function lifeStyle()
+  public function physicalActivity()
   {
-    return $this->hasOne(MedLifestyle::class, 'record_id', 'id');
+    return $this->hasOne(MedPhysicalActivity::class, 'record_id', 'id');
+  }
+  public function smoking()
+  {
+    return $this->hasOne(MedSmoking::class, 'record_id', 'id');
+  }
+  public function feedingHabits()
+  {
+    return $this->hasOne(MedFeedingHabit::class, 'record_id', 'id');
+  }
+  public function others()
+  {
+    return $this->hasOne(MedOther::class, 'record_id', 'id');
   }
   public function allergies()
   {
@@ -62,6 +74,8 @@ class MedExpedient extends Model
       ->where('medical_appointments.date', '=', Carbon::now()->format('Y-m-d'))
       ->where('medical_appointments.area', '=', 'Medicina')
       ->where('medical_appointments.attended', '=', false)
+      //->where('medical_appointments.nur_cancelled', '=', false)
+      ->where('medical_appointments.med_cancelled', '=', false)
       ->where('medical_appointments.nur_attended', '=', true)
       ->orderBy('medical_appointments.hour', 'asc')
       ->get();

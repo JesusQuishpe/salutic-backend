@@ -39,7 +39,7 @@ class MedicalAppointment extends Model
 
   public function nursingArea()
   {
-    return $this->hasOne(NursingArea::class,'appo_id','id');
+    return $this->hasOne(NursingArea::class, 'appo_id', 'id');
   }
 
   public function getCitationsWithFullname()
@@ -49,7 +49,7 @@ class MedicalAppointment extends Model
         'medical_appointments.*',
         'patients.fullname'
       ])
-      ->paginate(10);
+      ->paginate(105);
   }
 
   public function getCitationsByIdentification($identification)
@@ -118,7 +118,7 @@ class MedicalAppointment extends Model
           $medFam = new MedFamilyHistory();
           $medFam->record_id = $medRecord->id;
           $medFam->pathological = "";
-          $medFam->noPathological = "";
+          $medFam->no_pathological = "";
           $medFam->perinatal = "";
           $medFam->gynecological = "";
           $medFam->save();
@@ -155,9 +155,21 @@ class MedicalAppointment extends Model
           $medIn->urinary = ""; //urninario
           $medIn->save();
           //Estilo de vida
-          $medLife = new MedLifestyle();
-          $medLife->record_id = $medRecord->id;
-          $medLife->save();
+          $physical = new MedPhysicalActivity();
+          $physical->record_id = $medRecord->id;
+          $physical->save();
+
+          $smoking = new MedSmoking();
+          $smoking->record_id = $medRecord->id;
+          $smoking->save();
+
+          $habit = new MedFeedingHabit();
+          $habit->record_id = $medRecord->id;
+          $habit->save();
+
+          $other = new MedOther();
+          $other->record_id = $medRecord->id;
+          $other->save();
           //Alergias
           $medAler = new MedAllergie();
           $medAler->record_id = $medRecord->id;
@@ -171,5 +183,53 @@ class MedicalAppointment extends Model
       DB::rollBack();
       throw $th;
     }
+  }
+  public function getCitationsByFilters($startDate, $endDate, $stateFilter, $identification)
+  {
+    //Busca solo por numero de cedula
+    if (!isset($startDate) && !isset($endDate) && !isset($stateFilter)) {
+      return MedicalAppointment::join('patients', 'medical_appointments.patient_id', '=', 'patients.id')
+        ->select([
+          'medical_appointments.*',
+          'patients.fullname'
+        ])
+        ->where('patients.identification', '=', $identification)
+        ->paginate(5);
+    }
+    //Busca por estado y numero de cedula
+    if (!isset($startDate) && !isset($endDate) && isset($stateFilter)) {
+      
+      return MedicalAppointment::join('patients', 'medical_appointments.patient_id', '=', 'patients.id')
+        ->select([
+          'medical_appointments.*',
+          'patients.fullname'
+        ])
+        ->where('patients.identification', '=', $identification)
+        ->where('medical_appointments.attended', '=', $stateFilter === "atendidas" ? true : false)
+        ->paginate(5);
+    }
+    //Busca por fecha inicial, final y numero de cedula
+    if (isset($startDate) && isset($endDate) && !isset($stateFilter)) {
+      return MedicalAppointment::join('patients', 'medical_appointments.patient_id', '=', 'patients.id')
+        ->select([
+          'medical_appointments.*',
+          'patients.fullname'
+        ])
+        ->where('medical_appointments.date', '>=', $startDate)
+        ->where('medical_appointments.date', '<=', $endDate)
+        ->where('patients.identification', '=', $identification)
+        ->paginate(5);
+    }
+    //Busca por fecha inicial, final, estado y cedula
+    return MedicalAppointment::join('patients', 'medical_appointments.patient_id', '=', 'patients.id')
+      ->select([
+        'medical_appointments.*',
+        'patients.fullname'
+      ])
+      ->where('medical_appointments.date', '>=', $startDate)
+      ->where('medical_appointments.date', '<=', $endDate)
+      ->where('medical_appointments.attended', '=', $stateFilter === "atendidas" ? true : false)
+      ->where('patients.identification', '=', $identification)
+      ->paginate(5);
   }
 }

@@ -31,6 +31,9 @@ class CreateMedicalAppointmentsTable extends Migration
       $table->boolean('nur_attended')->default(false);
       $table->boolean('cancelled')->default(false);
 
+      $table->boolean('nur_cancelled')->default(false);
+      $table->boolean('med_cancelled')->default(false);
+      $table->boolean('odo_cancelled')->default(false);
       //$table->string('estadisticas',15)->nullable()->default(null);
       //$table->boolean('atendido')->default(false);
       $table->timestamps();

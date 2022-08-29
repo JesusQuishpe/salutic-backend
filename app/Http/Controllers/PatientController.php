@@ -66,6 +66,7 @@ class PatientController extends Controller
    */
   public function destroy(Patient $patient)
   {
-    //
+    $patient->delete();
+    return response()->json([],204);
   }
 }

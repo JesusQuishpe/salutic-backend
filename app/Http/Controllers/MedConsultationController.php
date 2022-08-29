@@ -61,8 +61,8 @@ class MedConsultationController extends Controller
           $model->save();
         }
       }
-      $appo=MedicalAppointment::findOrFail($request->appo_id);
-      $appo->attended=true;
+      $appo = MedicalAppointment::findOrFail($request->appo_id);
+      $appo->attended = true;
       $appo->save();
       DB::commit();
       return response()->json($consultation);
@@ -108,30 +108,51 @@ class MedConsultationController extends Controller
       $consultation->treatments = $request->treatments;
       $consultation->save();
       if ($request->has('cies')) {
-        MedConsultationCie::where('consultation_id', $consultation->id)->delete();
+        //MedConsultationCie::where('consultation_id', $consultation->id)->delete();
         foreach ($request->cies as $cie) {
-          $model = new MedConsultationCie();
-          $model->consultation_id = $consultation->id;
-          $model->cie_id = $cie['cie_id'];
-          $model->disease_state = $cie['disease_state'];
-          $model->severity = $cie['severity'];
-          $model->active_disease = $cie['active_disease'];
-          $model->infectious_disease = $cie['infectious_disease'];
-          $model->diagnostic_date = $cie['diagnostic_date'];
-          $model->observations = $cie['observations'];
-          $model->diagnostic_age = $cie['diagnostic_age'];
-          $model->cured = $cie['cured'];
-          $model->allergic_disease = $cie['allergic_disease'];
-          $model->allergy_type = $cie['allergy_type'];
-          $model->warnings_during_pregnancy = $cie['warnings_during_pregnancy'];
-          $model->week_contracted = $cie['week_contracted'];
-          $model->currently_in_treatment = $cie['currently_in_treatment'];
-          $model->aditional_information = $cie['aditional_information'];
-          $model->save();
+          $cieFinded = MedConsultationCie::find($cie['id']);
+          if ($cieFinded) { //exists
+            $cieFinded->consultation_id = $consultation->id;
+            $cieFinded->cie_id = $cie['cie_id'];
+            $cieFinded->disease_state = $cie['disease_state'];
+            $cieFinded->severity = $cie['severity'];
+            $cieFinded->active_disease = $cie['active_disease'];
+            $cieFinded->infectious_disease = $cie['infectious_disease'];
+            $cieFinded->diagnostic_date = $cie['diagnostic_date'];
+            $cieFinded->observations = $cie['observations'];
+            $cieFinded->diagnostic_age = $cie['diagnostic_age'];
+            $cieFinded->cured = $cie['cured'];
+            $cieFinded->allergic_disease = $cie['allergic_disease'];
+            $cieFinded->allergy_type = $cie['allergy_type'];
+            $cieFinded->warnings_during_pregnancy = $cie['warnings_during_pregnancy'];
+            $cieFinded->week_contracted = $cie['week_contracted'];
+            $cieFinded->currently_in_treatment = $cie['currently_in_treatment'];
+            $cieFinded->aditional_information = $cie['aditional_information'];
+            $cieFinded->save();
+          } else {
+            $model = new MedConsultationCie();
+            $model->consultation_id = $consultation->id;
+            $model->cie_id = $cie['cie_id'];
+            $model->disease_state = $cie['disease_state'];
+            $model->severity = $cie['severity'];
+            $model->active_disease = $cie['active_disease'];
+            $model->infectious_disease = $cie['infectious_disease'];
+            $model->diagnostic_date = $cie['diagnostic_date'];
+            $model->observations = $cie['observations'];
+            $model->diagnostic_age = $cie['diagnostic_age'];
+            $model->cured = $cie['cured'];
+            $model->allergic_disease = $cie['allergic_disease'];
+            $model->allergy_type = $cie['allergy_type'];
+            $model->warnings_during_pregnancy = $cie['warnings_during_pregnancy'];
+            $model->week_contracted = $cie['week_contracted'];
+            $model->currently_in_treatment = $cie['currently_in_treatment'];
+            $model->aditional_information = $cie['aditional_information'];
+            $model->save();
+          }
         }
       }
       DB::commit();
-      return response()->json([],204);
+      return response()->json([], 204);
     } catch (\Throwable $th) {
       DB::rollBack();
       throw $th;
@@ -146,6 +167,25 @@ class MedConsultationController extends Controller
    */
   public function destroy(MedConsultation $consultation)
   {
-    //
+    try {
+      DB::beginTransaction();     
+      $results = MedConsultationCie::where('consultation_id', $consultation->id)->get();
+      foreach ($results as $result) {
+        $result->delete();
+      }
+      $consultation->delete();
+      DB::commit();
+      return response()->json([],204);
+    } catch (\Throwable $th) {
+      throw $th;
+    }
+  }
+
+  public function removeOfQueue($appoId)
+  {
+    $appo = MedicalAppointment::findOrFail($appoId);
+    $appo->med_cancelled = true;
+    $appo->save();
+    return response()->json([], 204);
   }
 }

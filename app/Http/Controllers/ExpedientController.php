@@ -5,9 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\MedAllergie;
 use App\Models\MedExpedient;
 use App\Models\MedFamilyHistory;
+use App\Models\MedFeedingHabit;
 use App\Models\MedInterrogation;
 use App\Models\MedLifestyle;
+use App\Models\MedOther;
+use App\Models\MedPhysicalActivity;
 use App\Models\MedPhysicalExploration;
+use App\Models\MedSmoking;
 use App\Models\Patient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +33,7 @@ class ExpedientController extends Controller
     if ($request->has('identification')) {
       return MedExpedient::join('patients', 'patient_id', '=', 'patients.id')
         ->select([
-          'medical_records.id as id',
+          'med_expedients.id as id',
           'patients.id as patient_id',
           'patients.identification',
           'patients.city',
@@ -72,7 +76,15 @@ class ExpedientController extends Controller
   {
     return response()->json(
       MedExpedient::with(
-        ['patient', 'patientRecord', 'physicalExploration', 'interrogation', 'lifestyle', 'allergies']
+        ['patient', 
+        'patientRecord', 
+        'physicalExploration', 
+        'interrogation', 
+        'physicalActivity', 
+        'smoking',
+        'feedingHabits',
+        'others',
+        'allergies']
       )->findOrFail($id)
     );
   }
@@ -101,13 +113,17 @@ class ExpedientController extends Controller
       //Actualizamos el interrogatorio
       MedInterrogation::where('record_id', $recId)->update($request->input('interrogation'));
       //Actualizamos el estilo de vida
-      MedLifestyle::where('record_id', $recId)->update($request->input('lifestyle'));
+      //MedLifestyle::where('record_id', $recId)->update($request->input('lifestyle'));
+      MedPhysicalActivity::where('record_id',$recId)->update($request->input('physical_activity'));
+      MedSmoking::where('record_id',$recId)->update($request->input('smoking'));
+      MedFeedingHabit::where('record_id',$recId)->update($request->input('feeding_habits'));
+      MedOther::where('record_id',$recId)->update($request->input('others'));
       //Actualizamos las alergias
       $alergieModel = MedAllergie::where('record_id', $recId)->firstOrFail();
       $alergieModel->description = $request->input('allergies.description');
       $alergieModel->save();
       DB::commit();
-      return response()->json([],204);
+      return response()->json([], 204);
     } catch (\Throwable $th) {
       DB::rollBack();
       throw $th;
@@ -122,6 +138,19 @@ class ExpedientController extends Controller
    */
   public function destroy(MedExpedient $expedient)
   {
-    //
+    try {
+      DB::beginTransaction();
+      MedFamilyHistory::where('record_id', $expedient->id)->delete();
+      MedPhysicalExploration::where('record_id', $expedient->id)->delete();
+      MedInterrogation::where('record_id', $expedient->id)->delete();
+      MedLifestyle::where('record_id', $expedient->id)->delete();
+      MedAllergie::where('record_id', $expedient->id)->delete();
+      $expedient->delete();
+      DB::commit();
+      return response()->json([],204);
+    } catch (\Throwable $th) {
+      DB::rollBack();
+      throw $th;
+    }
   }
 }

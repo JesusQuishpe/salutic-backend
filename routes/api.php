@@ -16,6 +16,7 @@ use App\Http\Controllers\NursingController;
 use App\Http\Controllers\OdontologyController;
 use App\Http\Controllers\OdoPDFController;
 use App\Http\Controllers\PatientController;
+use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SystemModuleController;
 use App\Http\Controllers\UserController;
@@ -36,7 +37,13 @@ Route::group(['prefix' => 'v1'], function () {
   //Pdf routes
   Route::get('odontologia/pdf/{recId}',[OdoPDFController::class,'pdf']);
   Route::get('resultado/pdf/{orderId}',[LaboratoryController::class,'pdf']);
-
+  Route::get('permisos',[PermissionController::class,'index']);
+  //Delete routes
+  Route::delete('enfermeria/{appoId}/eliminar-paciente',[NursingController::class,'removeOfQueue']);
+  Route::delete('medicina/{appoId}/eliminar-paciente',[MedConsultationController::class,'removeOfQueue']);
+  Route::delete('odontologia/{appoId}/eliminar-paciente',[OdontologyController::class,'removeOfQueue']);
+  //Posts
+  Route::post('permisos',[PermissionController::class,'store']);
   //Search
   Route::get('cies/search',[CieController::class,'search']);
   Route::apiResource('modulos', SystemModuleController::class)->parameters(['modulos' => 'module']);
@@ -59,6 +66,4 @@ Route::group(['prefix' => 'v1'], function () {
   Route::apiResource('empresas',CompanyController::class)->parameters(['empresas'=>'company']);
   Route::post('login', [UserController::class, 'login']);
   Route::put('usuarios/password-change/{id}', [UserController::class, 'passwordChange']);
-
- 
 });
