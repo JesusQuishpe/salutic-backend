@@ -68,7 +68,7 @@ class SystemModuleSeeder extends Seeder
         $module->parent_id = 1;
         $module->enable = true;
         $module->canDelete = false;
-        $module->path = '/citas';
+        $module->path = 'caja/citas';
         $module->save();
 
         $module = new SystemModule();
@@ -76,7 +76,7 @@ class SystemModuleSeeder extends Seeder
         $module->parent_id = 1;
         $module->enable = true;
         $module->canDelete = false;
-        $module->path = '/pacientes';
+        $module->path = 'caja/pacientes';
         $module->save();
 
         //Submodulos de enfermeria
