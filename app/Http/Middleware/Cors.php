@@ -17,9 +17,11 @@ class Cors
   public function handle(Request $request, Closure $next)
   {
     $response = $next($request);
+   if(method_exists($response,'header')){//Esto valida para cuando una respuesta no es un file
     $response->header('Access-Control-Allow-Origin', '*');
     $response->header('Access-Control-Allow-Methods', 'POST,GET,OPTIONS,PUT,DELETE');
     $response->header('Access-Control-Allow-Headers', 'Content-Type,Accept,Authorization,X-Requested-With,Application');
+   }
     return $response;
   }
 }

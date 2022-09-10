@@ -76,8 +76,25 @@ class NursingArea extends Model
     $model = static::query()->create($attributes);
     return $model;
   }
-  public function getHistoryByIdentification($identification)
+  public function getHistoryByIdentification($identification,$startDate,$endDate)
   {
+
+    if($startDate && $endDate){
+      return NursingArea::join('medical_appointments', 'appo_id', '=', 'medical_appointments.id')
+      ->join('patients', 'medical_appointments.patient_id', '=', 'patients.id')
+      ->select([
+        'medical_appointments.id as appo_id',
+        'nursing_area.id as nur_id',
+        'medical_appointments.date',
+        'medical_appointments.hour',
+        'patients.fullname as patient'
+      ])
+      ->where('patients.identification', '=', $identification)
+      ->paginate(10);
+    }
+    
+
+
     return NursingArea::join('medical_appointments', 'appo_id', '=', 'medical_appointments.id')
       ->join('patients', 'medical_appointments.patient_id', '=', 'patients.id')
       ->select([
@@ -88,6 +105,6 @@ class NursingArea extends Model
         'patients.fullname as patient'
       ])
       ->where('patients.identification', '=', $identification)
-      ->get();
+      ->paginate(3);
   }
 }

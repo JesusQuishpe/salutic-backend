@@ -82,13 +82,13 @@ class UserController extends Controller
 
   public function login(Request $request)
   {
-    $email = $request->input('email');
+    $username = $request->input('username');
     $password = $request->input('password');
-    $user = User::where('email', '=', $email)->first();
+    $user = User::where('name', '=', $username)->first();
     if (!$user) {
       return response()->json(['message'=>'El usuario no existe'],404);
     }
-    if ($user->email !== $email || !Hash::check($password, $user->password)) {
+    if ($user->name !== $username || !Hash::check($password, $user->password)) {
       return response()->json(['message'=>'Credenciales incorrectas'], 401);
     }
 

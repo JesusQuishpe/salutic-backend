@@ -73,40 +73,39 @@ class CompanyController extends Controller
   public function update(Request $request, Company $company)
   {
     try {
-      
-      $logo_path = $company->logo_path;
-      $logoNameOfFile = basename(Storage::path($logo_path));
+      //$logo_path = $company->logo_path;
+      //$logoNameOfFile = basename(Storage::path($logo_path));
       $data = json_decode($request->input('data'));
       //return response()->json($data);
-      if ($request->hasFile('logo')) {
+      /*if ($request->hasFile('logo')) {
         if ($logo_path) { //Se debe eliminar el anterior logo y actualizar con el actual
           Storage::move($logo_path, 'logos-eliminados/' . $logoNameOfFile);
           $logo_path = $request->file('logo')->store('logos');
         } else {
           $logo_path = $request->file('logo')->store('logos');
         }
-      }
+      }*/
 
       $company->long_name = $data->long_name;
       $company->short_name = $data->short_name;
       $company->phone = $data->phone;
       $company->address = $data->address;
       $company->email = $data->email;
-      $company->logo_path = $logo_path;
+      //$company->logo_path = $logo_path;
       $company->start_hour = $data->start_hour;
       $company->end_hour = $data->end_hour;
       $company->save();
       return response()->json($company);
     } catch (\Throwable $th) {
       //
-      if (isset($logo_path) && Storage::exists($logo_path)) {
+      /*if (isset($logo_path) && Storage::exists($logo_path)) {
         //Restablecemos el anterior logo y eliminamos el nuevo
         Storage::move(
           'logos-eliminados/' . $logoNameOfFile,
           $logo_path
         ); //Movemos el antiguo odontograma a su respectivo directorio
         Storage::delete($logo_path); //Eliminamos el nuevo odontograma
-      }
+      }*/
       throw $th;
     }
   }

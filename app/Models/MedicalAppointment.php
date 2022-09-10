@@ -49,7 +49,8 @@ class MedicalAppointment extends Model
         'medical_appointments.*',
         'patients.fullname'
       ])
-      ->paginate(105);
+      ->orderBy('medical_appointments.created_at','desc')
+      ->paginate(10);
   }
 
   public function getCitationsByIdentification($identification)

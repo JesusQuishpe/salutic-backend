@@ -19,7 +19,7 @@ class CreateLbGroupsTable extends Migration
             $table->foreign('area_id')->references('id')->on('lb_areas');
             $table->string('code',20)->unique();
             $table->string('name',100)->unique();
-            $table->boolean('showAtPrint')->default(false);
+            $table->boolean('show_at_print')->default(false);
             $table->float('price')->default(0);
             $table->timestamps();
         });

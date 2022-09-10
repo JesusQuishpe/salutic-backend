@@ -27,6 +27,8 @@ class CreateOdoPatientRecordsTable extends Migration
             $table->boolean('attended')->default(false);
             $table->string('odontogram_path')->nullable();
             $table->string('acta_path')->nullable();
+            $table->string('odontogram_client_basename')->nullable();
+            $table->string('acta_client_basename')->nullable();
             $table->float('value')->default(0);
             $table->timestamps();
         });

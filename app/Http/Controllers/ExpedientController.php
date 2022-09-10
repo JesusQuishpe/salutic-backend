@@ -143,7 +143,10 @@ class ExpedientController extends Controller
       MedFamilyHistory::where('record_id', $expedient->id)->delete();
       MedPhysicalExploration::where('record_id', $expedient->id)->delete();
       MedInterrogation::where('record_id', $expedient->id)->delete();
-      MedLifestyle::where('record_id', $expedient->id)->delete();
+      MedPhysicalActivity::where('record_id',$expedient->id)->delete();
+      MedSmoking::where('record_id',$expedient->id)->delete();
+      MedFeedingHabit::where('record_id',$expedient->id)->delete();
+      MedOther::where('record_id',$expedient->id)->delete();
       MedAllergie::where('record_id', $expedient->id)->delete();
       $expedient->delete();
       DB::commit();

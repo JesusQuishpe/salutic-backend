@@ -25,6 +25,7 @@ use App\Models\OdoTeethDetail;
 use App\Models\OdoTooth;
 use App\Models\OdoTreatment;
 use Carbon\Carbon;
+use Illuminate\Http\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -43,6 +44,22 @@ class OdontologyController extends Controller
       return response()->json($queue);
     }
     if ($request->query('q') === "data" && $request->has('appo_id')) {
+      $appo = MedicalAppointment::where('id', $request->appo_id)
+        ->where('area', 'Odontologia')
+        ->firstOrFail();
+      $date = Carbon::now()->format('Y-m-d');
+      if ($appo->attended === 1) {
+        return response()->json(['message' => 'La cita ya ha sido atendida'], 404);
+      }
+      if ($appo->date !== $date) {
+        return response()->json(['message' => 'La cita ya ha execedido su tiempo límite'], 404);
+      }
+      if ($appo->nur_cancelled === 1) {
+        return response()->json(['message' => 'La cita ha sido cancelada desde el area de enfermeria'], 404);
+      }
+      if ($appo->nur_attended === 0) {
+        return response()->json(['message' => 'El paciente debe pasar por el area de enfermeria'], 404);
+      }
       $data = OdoPatientRecord::getDataForNewConsultation($request->input('appo_id'));
       return response()->json($data);
     }
@@ -65,31 +82,24 @@ class OdontologyController extends Controller
 
     $actaPath = null;
     $odontogramPath = null;
+    $odontogramClientBaseName = null;
+    $actaClientBaseName = null;
+
     try {
-      /*$odontogramName=time().'odontogram';
-            $actaName=time().'acta';
-            Storage::putFileAs('odontogramas',$request->file('odontogram_image'),$actaName);*/
+      DB::beginTransaction();
       if ($request->hasFile('odontogram_image')) {
-        $odontogramPath = $request->file('odontogram_image')->store('odontogramas');
+        $odontogramPath = $request->file('odontogram_image')->store('public/odontogramas');
+        $odontogramClientBaseName = $request->file('odontogram_image')->getClientOriginalName();
       } else {
         return response()->json(['message' => 'No se ha podido cargar la imagen del odontograma'], 409);
       }
       //Guardamos el acta de constitucion si existe
       if ($request->hasFile('acta')) {
-        $actaPath = $request->file('acta')->store('actas');
+        $actaPath = $request->file('acta')->store('public/actas');
+        $actaClientBaseName = $request->file('acta')->getClientOriginalName();
       }
-      //if (!$actaPath) return $this->sendError('No se ha podido guardar el acta de constitucion en el servidor');
 
-
-      /*$patient = NursingArea::join('medical_appointments', 'nursing_area.appo_id', '=', 'medical_appointments.id')
-                ->join('patients', 'medical_appointments.patient_id', '=', 'patients.id')
-                ->select([
-                    'patients.*'
-                ])
-                ->firstOrFail();*/
-      DB::beginTransaction();
       $data = json_decode($request->input('data'), true);
-      //return $this->sendResponse($data,'Prueba');
       $record = new OdoPatientRecord();
       $record->date = $date;
       $record->hour = $hour;
@@ -99,6 +109,8 @@ class OdontologyController extends Controller
       $record->nur_id = $data['nur_id'];
       $record->user_id = $data['user_id'];
       $record->odontogram_path = $odontogramPath;
+      $record->odontogram_client_basename = $odontogramClientBaseName;
+      $record->acta_client_basename = $actaClientBaseName;
       $record->acta_path = $actaPath ? $actaPath : null;
       $record->attended = true;
       $record->value = $data['general_info']['value'];
@@ -141,7 +153,7 @@ class OdontologyController extends Controller
       foreach ($data['indicator']['indicators'] as $indicator) {
         $indicatorDetailModel = new OdoIndicatorDetail();
         $indicatorDetailModel->id_ind = $indicatorModel->id;
-        $indicatorDetailModel->selected_pieces = implode(',',$indicator['selected_pieces']);
+        $indicatorDetailModel->selected_pieces = implode(',', $indicator['selected_pieces']);
         $indicatorDetailModel->plaque = $indicator['plaque'];
         $indicatorDetailModel->calc = $indicator['calc'];
         $indicatorDetailModel->gin = $indicator['gin'];
@@ -245,12 +257,25 @@ class OdontologyController extends Controller
   /**
    * Display the specified resource.
    *
-   * @param  \App\Models\OdoPatientRecord  $odoPatientRecord
+   * @param  \App\Models\OdoPatientRecord  $odontology
    * @return \Illuminate\Http\Response
    */
   public function show($rec_id)
   {
-    $patientRecord = OdoPatientRecord::with('nursingArea.medicalAppointment.patient')->find($rec_id);
+    $acta = null;
+    $patientRecord = OdoPatientRecord::with('nursingArea.medicalAppointment.patient')->findOrFail($rec_id);
+    if ($patientRecord->acta_path) {
+      $actaURL = Storage::url($patientRecord->acta_path);
+      $info = pathinfo($patientRecord->acta_path);
+      //$name = $info['basename'];
+      $extension = $info['extension'];
+      $acta = [
+        'url' => $actaURL,
+        'name' => $patientRecord->acta_client_basename,
+        'extension' => $extension
+      ];
+    }
+
     $familyHistory = OdoFamilyHistory::with('details')->where('rec_id', '=', $patientRecord->id)->first();
     $stomatognathicTest = OdoStomatognathicTest::with('details')->where('rec_id', '=', $patientRecord->id)->first();
     $indicator = OdoIndicator::with('details')->where('rec_id', '=', $patientRecord->id)->first();
@@ -272,6 +297,7 @@ class OdontologyController extends Controller
       'appo_id' => $patientRecord->nursingArea->medicalAppointment->id,
       'patient' => $patientRecord->nursingArea->medicalAppointment->patient,
       'patient_record' => $patientRecord,
+      'acta' => $acta,
       'nursing_info' => $patientRecord->nursingArea,
       'disease_list' => $diseaseList,
       'pathologies' => $pathologies,
@@ -295,10 +321,10 @@ class OdontologyController extends Controller
    * Update the specified resource in storage.
    *
    * @param  \Illuminate\Http\Request  $request
-   * @param  \App\Models\OdoPatientRecord  $odoPatientRecord
+   * @param  \App\Models\OdoPatientRecord  $odontology
    * @return \Illuminate\Http\Response
    */
-  public function update(Request $request, OdoPatientRecord $odoPatientRecord)
+  public function update(Request $request, OdoPatientRecord $odontology)
   {
     $date = Carbon::now()->format('Y-m-d');
     $hour = Carbon::now()->format('H:i:s');
@@ -306,14 +332,19 @@ class OdontologyController extends Controller
     $actaPath = null;
     $odontogramPath = null;
     $data = json_decode($request->input('data'), true);
-    $actaNameOfFile = basename(Storage::path($data['general_info']['acta_path']));
-    $odontogramNameOfFile = basename(Storage::path($data['general_info']['odontogram_path']));
+    $actaBaseName = basename(Storage::path($odontology->acta_path));
+    $odontogramBaseName = basename(Storage::path($odontology->odontogram_path));
+
+    $actaClientBaseName = null;
+    $odontogramClientBaseName = null;
+
 
     try {
 
       if ($request->hasFile('odontogram_image')) {
-        Storage::move($data['general_info']['odontogram_path'], 'odontogramas-eliminados/' . $odontogramNameOfFile);
-        $odontogramPath = $request->file('odontogram_image')->store('odontogramas');
+        Storage::move($odontology->odontogram_path, 'public/odontogramas-eliminados/' . $odontogramBaseName);
+        $odontogramPath = $request->file('odontogram_image')->store('public/odontogramas');
+        $odontogramClientBaseName = $request->file('odontogram_image')->getClientOriginalName();
         if (!$odontogramPath) return response()->json(['message' => 'No se ha podido guardar la imagen del odontograma'], 409);
       } else {
         return response()->json(['message' => 'No se ha podido cargar la imagen del odontograma'], 409);
@@ -321,31 +352,43 @@ class OdontologyController extends Controller
 
       //Validamos si a enviado una nueva acta
       if ($request->hasFile('acta')) {
-        if ($data['general_info']['acta_path']) { //Verificamos si ya ha guardado una acta antes
+        if ($odontology->acta_path) { //Verificamos si ya ha guardado una acta antes
           //Movemos la anterior acta al directorio actas-eliminadas
-          Storage::move($data['general_info']['acta_path'], 'actas-eliminadas/' . $actaNameOfFile);
+          Storage::move($odontology->acta_path, 'public/actas-eliminadas/' . $actaBaseName);
         }
         //Agregamos la nueva
-        $actaPath = $request->file('acta')->store('actas');
+        $actaPath = $request->file('acta')->store('public/actas');
+        $actaClientBaseName = $request->file('acta')->getClientOriginalName();
       } else {
-        if ($data['general_info']['acta_path']) {
-          $actaPath = $data['general_info']['acta_path']; //Mantiene la path anterior
+        //Eliminamos la acta anterior
+        $isActaChanged = $data['is_acta_changed'];
+
+        if ($isActaChanged && $odontology->acta_path) {
+          if (Storage::exists($odontology->acta_path)) {
+            Storage::delete($odontology->acta_path);
+          }
+        } else {
+          $actaPath = $odontology->acta_path;
+          $actaClientBaseName = $odontology->acta_client_basename;
+          $odontogramClientBaseName = $odontology->odontogram_client_basename;
         }
       }
 
       DB::beginTransaction();
 
-      $record = OdoPatientRecord::find($data['general_info']['id']);
-      $record->date = $date;
-      $record->hour = $hour;
-      $record->age_range = $data['general_info']['age_range'];
-      $record->reason_consultation = $data['general_info']['reason_consultation'];
-      $record->current_disease_and_problems = $data['general_info']['current_disease_and_problems'];
-      $record->user_id = $data['user_id'];
-      $record->odontogram_path = $odontogramPath;
-      $record->acta_path = $actaPath;
-      $record->value = $data['general_info']['value'];
-      $record->save();
+      //$record = OdoPatientRecord::find($data['general_info']['id']);
+      $odontology->date = $date;
+      $odontology->hour = $hour;
+      $odontology->age_range = $data['general_info']['age_range'];
+      $odontology->reason_consultation = $data['general_info']['reason_consultation'];
+      $odontology->current_disease_and_problems = $data['general_info']['current_disease_and_problems'];
+      $odontology->user_id = $data['user_id'];
+      $odontology->odontogram_path = $odontogramPath;
+      $odontology->acta_path = $actaPath;
+      $odontology->odontogram_client_basename = $odontogramClientBaseName;
+      $odontology->acta_client_basename = $actaClientBaseName;
+      $odontology->value = $data['general_info']['value'];
+      $odontology->save();
 
       //Actualizamos los antecedentes familiares
       $familyHistoryModel = OdoFamilyHistory::find($data['family_history']['id']);
@@ -388,15 +431,15 @@ class OdontologyController extends Controller
       $indicatorModel->save();
 
       //Guardamos los detalles de los indicadores
-      OdoIndicatorDetail::where('id_ind','=',$indicatorModel->id)->delete();
+      OdoIndicatorDetail::where('id_ind', '=', $indicatorModel->id)->delete();
       foreach ($data['indicator']['indicators'] as $indicator) {
         $detail = new OdoIndicatorDetail();
         $detail->id_ind = $indicatorModel->id;
-        $detail->selected_pieces=implode(',',$indicator['selected_pieces']);
+        $detail->selected_pieces = implode(',', $indicator['selected_pieces']);
         $detail->plaque = $indicator['plaque'];
         $detail->calc = $indicator['calc'];
         $detail->gin = $indicator['gin'];
-        $detail->row_pos=$indicator['row_pos'];
+        $detail->row_pos = $indicator['row_pos'];
         $detail->save();
       }
 
@@ -428,11 +471,11 @@ class OdontologyController extends Controller
       }
 
       //Primero eliminamos los diagnosticos
-      OdoDiagnostic::where('rec_id', '=', $record->id)->delete();
+      OdoDiagnostic::where('rec_id', '=', $odontology->id)->delete();
       foreach ($data['plan_and_diagnostics']['diagnostics'] as $diagnostic) {
         //Guardamos los nuevos diagnosticos
         $diagnosticModel = new OdoDiagnostic();
-        $diagnosticModel->rec_id = $record->id;
+        $diagnosticModel->rec_id = $odontology->id;
         $diagnosticModel->cie_id = $diagnostic['cie_id'];
         $diagnosticModel->description = $diagnostic['description'];
         $diagnosticModel->type = $diagnostic['type'];
@@ -440,11 +483,11 @@ class OdontologyController extends Controller
       }
 
       //Primero eliminamos los tratamientos
-      OdoTreatment::where('rec_id', '=', $record->id)->delete();
+      OdoTreatment::where('rec_id', '=', $odontology->id)->delete();
       //Guardamos los tratamientos
       foreach ($data['treatments'] as $treatment) {
         $treatmentModel = new OdoTreatment();
-        $treatmentModel->rec_id = $record->id;
+        $treatmentModel->rec_id = $odontology->id;
         $treatmentModel->sesion = $treatment['sesion'];
         $treatmentModel->date = $date;
         $treatmentModel->complications = $treatment['complications'];
@@ -482,29 +525,29 @@ class OdontologyController extends Controller
       //Actualizar el valor de la cita
       $appo = MedicalAppointment::findOrFail($data['appo_id']);
       $appo->attended = true;
-      $appo->value = $appo->initial_value + $record->value; //El valor de dos es fijo, corresponde al valor de la consulta
+      $appo->value = $appo->initial_value + $odontology->value; //El valor de dos es fijo, corresponde al valor de la consulta
       $appo->save();
       DB::commit();
       //Si todo se completa eliminamos los odontogramas y actas movidos
-      Storage::delete('odontogramas-eliminados/' . $odontogramNameOfFile);
-      Storage::delete('actas-eliminadas/' . $actaNameOfFile);
+      Storage::delete('public/odontogramas-eliminados/' . $odontogramBaseName);
+      Storage::delete('public/actas-eliminadas/' . $actaBaseName);
       return response()->json([], 204);
     } catch (\Throwable $th) {
       if (isset($odontogramPath) && Storage::exists($odontogramPath)) {
         //Restablecemos el anterior odontograma y eliminamos el nuevo
         Storage::move(
-          'odontogramas-eliminados/' . $odontogramNameOfFile,
-          $data['general_info']['odontogram_path']
+          'public/odontogramas-eliminados/' . $odontogramBaseName,
+          $odontology->odontogram_path
         ); //Movemos el antiguo odontograma a su respectivo directorio
         Storage::delete($odontogramPath); //Eliminamos el nuevo odontograma
       }
       if (isset($actaPath) && Storage::exists($actaPath)) {
         //Restablecemos la anterior acta y eliminamos la nueva
         Storage::move(
-          'actas-eliminadas/' . $actaNameOfFile,
-          $data['general_info']['acta_path']
+          'public/actas-eliminadas/' . $actaBaseName,
+          $odontology->acta_path
         ); //Movemos la antiguo acta a su respectivo directorio
-        Storage::delete($actaPath); //Eliminamos el acta que se ha actualizado
+        Storage::delete($actaPath); //Eliminamos el acta del cliente
       }
       try {
         DB::rollBack();
@@ -518,19 +561,147 @@ class OdontologyController extends Controller
   /**
    * Remove the specified resource from storage.
    *
-   * @param  \App\Models\OdoPatientRecord  $odoPatientRecord
+   * @param  \App\Models\OdoPatientRecord  $odontology
    * @return \Illuminate\Http\Response
    */
-  public function destroy(OdoPatientRecord $odoPatientRecord)
+  public function destroy(OdoPatientRecord $odontology)
   {
-    //
+    try {
+      DB::beginTransaction();
+      $familyHistory = OdoFamilyHistory::where('rec_id', '=', $odontology->id)->firstOrFail();
+      $familyDetails = OdoFamilyHistoryDetail::where('fam_id', '=', $familyHistory->id);
+      $stomatognathic = OdoStomatognathicTest::where('rec_id', '=', $odontology->id)->firstOrFail();
+      $stomatognathicDetails = OdoStomatognathicDetail::where('sto_test_id', '=', $stomatognathic->id);
+      $indicator = OdoIndicator::where('rec_id', '=', $odontology->id)->firstOrFail();
+      $indicatorDetails = OdoIndicatorDetail::where('id_ind', '=', $indicator->id);
+      $cpoCeoRatio = OdoCpoCeoRatio::where('rec_id', '=', $odontology->id)->firstOrFail();
+      $diagnosticPlan = OdoDiagnosticPlan::where('rec_id', '=', $odontology->id)->firstOrFail();
+      $planDetails = OdoPlanDetail::where('diag_plan_id', '=', $diagnosticPlan->id);
+      $diagnostics = OdoDiagnostic::where('rec_id', '=', $odontology->id);
+      $treatments = OdoTreatment::where('rec_id', '=', $odontology->id);
+      $odontogram = OdoOdontogram::where('rec_id', '=', $odontology->id)->firstOrFail();
+      $teeth = OdoTeethDetail::where('odo_id', '=', $odontogram->id);
+      $movilitiesReccesions = OdoMovilitieRecession::where('odo_id', '=', $odontogram->id);
+
+      $movilitiesReccesions->delete();
+      $teeth->delete();
+      $odontogram->delete();
+      $treatments->delete();
+      $diagnostics->delete();
+      $planDetails->delete();
+      $diagnosticPlan->delete();
+      $cpoCeoRatio->delete();
+      $indicatorDetails->delete();
+      $indicator->delete();
+      $stomatognathicDetails->delete();
+      $stomatognathic->delete();
+      $familyDetails->delete();
+      $familyHistory->delete();
+      $odontology->delete();
+      //Eliminar actas y odontogramas archivos
+      if (Storage::exists($odontology->odontogram_path)) {
+        Storage::delete($odontology->odontogram_path);
+      }
+      if (Storage::exists($odontology->acta_path)) {
+        Storage::delete($odontology->acta_path);
+      }
+      DB::commit();
+      return response()->json([], 204);
+    } catch (\Throwable $th) {
+      try {
+        DB::rollBack();
+      } catch (\Throwable $th) {
+        throw $th;
+      }
+      throw $th;
+    }
   }
 
   public function removeOfQueue($appoId)
   {
-    $appo=MedicalAppointment::findOrFail($appoId);
-    $appo->odo_cancelled=true;
+    $appo = MedicalAppointment::findOrFail($appoId);
+    $appo->odo_cancelled = true;
     $appo->save();
-    return response()->json([],204);
+    return response()->json([], 204);
+  }
+
+  public function search(Request $request)
+  {
+    //return response()->json($request->all());
+    $odo = (new OdoPatientRecord())->newQuery();
+    $odo->join('nursing_area', 'odo_patient_records.nur_id', '=', 'nursing_area.id')
+      ->join('medical_appointments', 'nursing_area.appo_id', '=', 'medical_appointments.id')
+      ->join('patients', 'medical_appointments.patient_id', '=', 'patients.id')
+      ->select([
+        'odo_patient_records.id as rec_id',
+        'patients.fullname as patient',
+        'patients.identification',
+        DB::raw('DATE(odo_patient_records.created_at) as date'),
+        DB::raw('TIME(odo_patient_records.created_at) as hour'),
+        'medical_appointments.id as appo_id',
+        'nursing_area.id as nur_id'
+      ]);
+    if ($request->input('start_date') !== null && $request->input('end_date') !== null) {
+      $startDate = Carbon::createFromFormat('Y-m-d', $request->input('start_date'));
+      $endDate = Carbon::createFromFormat('Y-m-d', $request->input('end_date'));
+      $odo->whereBetween('odo_patient_records.created_at', [$startDate, $endDate]);
+    }
+    if ($request->input('identification')) {
+      $odo->where('patients.identification', $request->input('identification'));
+    }
+    $odo->orderBy('odo_patient_records.created_at', 'desc');
+    return $this->toPagination($odo->paginate(3));
+  }
+  public function downloadActa($recId)
+  {
+    $rec = OdoPatientRecord::find($recId);
+    if ($rec->acta_path) {
+      $actaStoragePath = Storage::path($rec->acta_path);
+      $extension = (new File($actaStoragePath))->getExtension();
+      $extension = strtolower($extension);
+      switch ($extension) {
+        case "pdf":
+          $ctype = "application/pdf";
+          break;
+          /*case "exe": $ctype="application/octet-stream"; break;
+        case "zip": $ctype="application/zip"; break;
+        case "doc": $ctype="application/msword"; break;
+        case "xls": $ctype="application/vnd.ms-excel"; break;
+        case "ppt": $ctype="application/vnd.ms-powerpoint"; break;
+        case "gif": $ctype="image/gif"; break;*/
+        case "png":
+          $ctype = "image/png";
+          break;
+        case "jpeg":
+        case "jpg":
+          $ctype = "image/jpg";
+          break;
+        default:
+          $ctype = "application/force-download";
+      }
+
+
+      return response()->download($actaStoragePath, 'acta.' . $extension, [
+        'Content-type' => $ctype
+      ]);
+    } else {
+      return response("<div>No hay acta disponible para descargar</div>");
+    }
+  }
+  public function getActaFile($recId)
+  {
+    $rec = OdoPatientRecord::find($recId);
+    $actaURL = Storage::url($rec->acta_path);
+    //$info = pathinfo($rec->acta_path);
+    //$name = $info['basename'];
+    //$extension = $info['extension'];
+    $data = [
+      'url' => $actaURL,
+      'name' => $rec->acta_client_basename,
+    ];
+
+
+    //$file=new File($actaURL);
+    return response()->json($data);
   }
 }

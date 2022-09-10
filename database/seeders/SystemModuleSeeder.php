@@ -206,6 +206,22 @@ class SystemModuleSeeder extends Seeder
         $module->save();
 
         $module = new SystemModule();
+        $module->name = 'Medicamentos';
+        $module->parent_id = 6;
+        $module->enable = true;
+        $module->canDelete = false;
+        $module->path = '/medicamentos';
+        $module->save();
+
+        $module = new SystemModule();
+        $module->name = 'Cie 10';
+        $module->parent_id = 6;
+        $module->enable = true;
+        $module->canDelete = false;
+        $module->path = '/cies';
+        $module->save();
+
+        $module = new SystemModule();
         $module->name = 'Informacion de la empresa';
         $module->parent_id = 6;
         $module->enable = true;

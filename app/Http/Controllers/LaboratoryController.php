@@ -55,4 +55,5 @@ class LaboratoryController extends Controller
 
         //dd($resultadostoArray());
     }
+    
 }

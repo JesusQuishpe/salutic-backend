@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-
+use App\Models\Company;
 use App\Models\OdoPatientRecord;
 use App\Reports\OdontologyReport;
 use Illuminate\Http\Request;
@@ -19,13 +19,17 @@ class OdoPDFController extends Controller
         //$appoId=$request->input('appoId');
         //$nurId=$request->input('nurId');
        // $recId=$request->input('recId');
-
+        $company=Company::find(1);
         $model=new OdoPatientRecord();
+        
         $data=$model->getPatientRecordData($recId);
 
         #---------------------------------------
 
         $report = new OdontologyReport();
+        $report->companyName=$company->long_name;
+        $report->companyAddress=$company->address;
+        $report->companyCellphone=$company->phone;
         // set document information
 
         $report->SetCreator(PDF_CREATOR);

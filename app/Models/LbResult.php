@@ -109,7 +109,7 @@ class LbResult extends Model
                 'lb_groups.id',
                 'lb_groups.area_id',
                 'lb_groups.name',
-                'lb_groups.showAtPrint'
+                'lb_groups.show_at_print'
             ])
             ->where('lb_result_details.result_id', '=', $result->id)
             ->distinct()
@@ -203,7 +203,7 @@ class LbResult extends Model
                 'lb_groups.id',
                 'lb_groups.area_id',
                 'lb_groups.name',
-                'lb_groups.showAtPrint'
+                'lb_groups.show_at_print'
             ])
             ->where('lb_result_details.result_id', '=', $result->id)
             ->distinct()

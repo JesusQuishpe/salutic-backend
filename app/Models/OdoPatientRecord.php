@@ -106,7 +106,7 @@ class OdoPatientRecord extends Model
   public static function getDataForNewConsultation($appo_id)
   {
     $appo = MedicalAppointment::findOrFail($appo_id);
-    if ($appo->attended === 1) {
+    if ($appo->attended === 1 && $appo->area==="Odontologia") {
       return ['attended' => true, 'message' => 'La cita ya ha sido atendida'];
     }
     $patient = $appo->patient;

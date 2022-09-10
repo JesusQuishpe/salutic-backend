@@ -31,6 +31,7 @@ class LbGroupController extends Controller
     $group->name = $request->name;
     $group->area_id = $request->area_id;
     $group->price = $request->price;
+    $group->show_at_print = $request->show_at_print;
     $group->save();
     return response()->json($group);
   }
@@ -43,7 +44,7 @@ class LbGroupController extends Controller
    */
   public function show($id)
   {
-    $group=LbGroup::with('area')->find($id);
+    $group=LbGroup::with('area')->findOrFail($id);
     return response()->json($group);
   }
 
@@ -60,6 +61,7 @@ class LbGroupController extends Controller
     $group->name = $request->name;
     $group->area_id = $request->area_id;
     $group->price = $request->price;
+    $group->show_at_print = $request->show_at_print;
     $group->save();
     return response()->json($group);
   }

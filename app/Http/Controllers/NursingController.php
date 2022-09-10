@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\MedicalAppointment;
 use App\Models\NursingArea;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class NursingController extends Controller
 {
@@ -16,9 +18,6 @@ class NursingController extends Controller
   public function index(Request $request)
   {
     $model = new NursingArea();
-    if ($request->has('history')) {
-      return response()->json($model->getHistoryByIdentification($request->identification));
-    }
     $queue = $model->getPatientQueue();
     return response()->json($queue);
   }
@@ -58,17 +57,17 @@ class NursingController extends Controller
    */
   public function update(Request $request, NursingArea $nursing)
   {
-    $nursing->user_id=$request->user_id;
-    $nursing->appo_id=$request->appo_id;
-    $nursing->weight=$request->weight;
-    $nursing->stature=$request->stature;
-    $nursing->temperature=$request->temperature;
-    $nursing->pressure=$request->pressure;
-    $nursing->imc=$request->imc;
-    $nursing->imc_diagnostic=$request->imc_diagnostic;
-    $nursing->breathing_frequency=$request->breathing_frequency;
-    $nursing->heart_frequency=$request->heart_frequency;
-    $nursing->disability=$request->disability;
+    $nursing->user_id = $request->user_id;
+    $nursing->appo_id = $request->appo_id;
+    $nursing->weight = $request->weight;
+    $nursing->stature = $request->stature;
+    $nursing->temperature = $request->temperature;
+    $nursing->pressure = $request->pressure;
+    $nursing->imc = $request->imc;
+    $nursing->imc_diagnostic = $request->imc_diagnostic;
+    $nursing->breathing_frequency = $request->breathing_frequency;
+    $nursing->heart_frequency = $request->heart_frequency;
+    $nursing->disability = $request->disability;
     $nursing->save();
     return response()->json($nursing);
   }
@@ -86,9 +85,35 @@ class NursingController extends Controller
 
   public function removeOfQueue($appoId)
   {
-    $appo=MedicalAppointment::findOrFail($appoId);
-    $appo->nur_cancelled=true;
+    $appo = MedicalAppointment::findOrFail($appoId);
+    $appo->nur_cancelled = true;
     $appo->save();
-    return response()->json([],204);
+    return response()->json([], 204);
+  }
+
+  public function search(Request $request)
+  {
+    //return response()->json($request->all());
+    $nur = (new NursingArea())->newQuery();
+    $nur->join('medical_appointments', 'nursing_area.appo_id', '=', 'medical_appointments.id')
+      ->join('patients', 'medical_appointments.patient_id', '=', 'patients.id')
+      ->select([
+        'patients.fullname as patient',
+        'patients.identification',
+        DB::raw('DATE_FORMAT(nursing_area.created_at,"%d/%m/%Y") as date'),
+        DB::raw('TIME(nursing_area.created_at) as hour'),
+        'medical_appointments.id as appo_id',
+        'nursing_area.id as nur_id'
+      ]);
+    if ($request->input('start_date')!==null && $request->input('end_date')!==null) {
+      $startDate=Carbon::createFromFormat('Y-m-d', $request->input('start_date'));
+      $endDate=Carbon::createFromFormat('Y-m-d', $request->input('end_date'));
+      $nur->whereBetween('nursing_area.created_at',[$startDate,$endDate]);
+    }
+    if ($request->input('identification')) {
+      $nur->where('patients.identification', $request->input('identification'));
+    }
+    $nur->orderBy('nursing_area.created_at','desc');
+    return $this->toPagination($nur->paginate(3));
   }
 }

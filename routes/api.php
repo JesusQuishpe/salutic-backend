@@ -12,6 +12,7 @@ use App\Http\Controllers\LbResultController;
 use App\Http\Controllers\LbTestController;
 use App\Http\Controllers\LbUnitController;
 use App\Http\Controllers\MedConsultationController;
+use App\Http\Controllers\MedicineController;
 use App\Http\Controllers\NursingController;
 use App\Http\Controllers\OdontologyController;
 use App\Http\Controllers\OdoPDFController;
@@ -34,7 +35,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::group(['prefix' => 'v1'], function () {
+  //
+  Route::get('odontologia/{recId}/acta',[OdontologyController::class,'getActaFile']);
   //Pdf routes
+  Route::get('acta/{recId}/download',[OdontologyController::class,'downloadActa']);
   Route::get('odontologia/pdf/{recId}',[OdoPDFController::class,'pdf']);
   Route::get('resultado/pdf/{orderId}',[LaboratoryController::class,'pdf']);
   Route::get('permisos',[PermissionController::class,'index']);
@@ -45,7 +49,14 @@ Route::group(['prefix' => 'v1'], function () {
   //Posts
   Route::post('permisos',[PermissionController::class,'store']);
   //Search
+  Route::get('citas/search',[CitationController::class,'search']);
   Route::get('cies/search',[CieController::class,'search']);
+  Route::get('enfermerias/search',[NursingController::class,'search']);
+  Route::get('med-consultations/search',[MedConsultationController::class,'search']);
+  Route::get('odontologias/search',[OdontologyController::class,'search']);
+  Route::get('resultados/search',[LbResultController::class,'search']);
+  Route::get('medicamentos/search',[MedicineController::class,'search']);
+  //Resources
   Route::apiResource('modulos', SystemModuleController::class)->parameters(['modulos' => 'module']);
   Route::apiResource('citas', CitationController::class)->parameters(['citas' => 'citation']);
   Route::apiResource('enfermerias', NursingController::class)->parameters(['enfermerias' => 'nursing']);
@@ -64,6 +75,7 @@ Route::group(['prefix' => 'v1'], function () {
   Route::apiResource('roles', RolController::class)->parameters(['roles' => 'rol']);
   Route::apiResource('usuarios', UserController::class)->parameters(['usuarios' => 'user']);
   Route::apiResource('empresas',CompanyController::class)->parameters(['empresas'=>'company']);
+  Route::apiResource('medicamentos',MedicineController::class)->parameters(['medicamentos'=>'medicine']);
   Route::post('login', [UserController::class, 'login']);
   Route::put('usuarios/password-change/{id}', [UserController::class, 'passwordChange']);
 });

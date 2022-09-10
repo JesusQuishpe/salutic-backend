@@ -61,7 +61,7 @@ class LbTestController extends Controller
    */
   public function show($id)
   {
-    $test = LbTest::with('group.area', 'unit')->find($id);
+    $test = LbTest::with('group.area', 'unit')->findOrFail($id);
     return response($test);
   }
 
